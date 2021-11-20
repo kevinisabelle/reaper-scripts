@@ -1,12 +1,29 @@
 local name = "Displays the selected tracks with their FX on the console"
 
-function printTrackName (track)
+function getParent(track)
+    return reaper.GetParentTrack(track)
+end
+
+function printTrackBasicInfo(track)
     ret, trackname = reaper.GetTrackName(track)
-    reaper.ShowConsoleMsg("\"track\": \""..trackname.."\"\n")
+    trackNum = reaper.GetMediaTrackInfo_Value(track, "IP_TRACKNUMBER")
+    folderDepth = reaper.GetMediaTrackInfo_Value(track, "I_FOLDERDEPTH")
+    reaper.ShowConsoleMsg("\"name\": \""..trackname.."\"\n")
+    reaper.ShowConsoleMsg(",\"number\": "..trackNum.."\n")
+    reaper.ShowConsoleMsg(",\"depth\": "..folderDepth.."\n")
+
+    parentTrack = getParent(track);
+    if parentTrack ~= nil then
+        ret, parentTrackName = reaper.GetTrackName(parentTrack)
+        parentTracknum = reaper.GetMediaTrackInfo_Value(parentTrack, "IP_TRACKNUMBER")
+        reaper.ShowConsoleMsg(",\"parentTrack\": { \"name\": \""..parentTrackName.."\", \"number\": "..parentTracknum.."}\n")
+    else 
+        reaper.ShowConsoleMsg(",\"parentTrack\": null\n")
+    end
 end
 
 function printTrackFxNames(track)
-
+    reaper.ShowConsoleMsg(", \"fx\": [")    
     fxCount = reaper.TrackFX_GetCount(track)
     local i = 0;
     while i<fxCount do
@@ -16,14 +33,16 @@ function printTrackFxNames(track)
         i = i + 1
     end
     ret, trackname = reaper.GetTrackName(track)
-
+    reaper.ShowConsoleMsg("]")
 end
 
 function printSendsList(track)
     nbSends = reaper.GetTrackNumSends(track, 0)
     nbReceives = reaper.GetTrackNumSends(track, -1)
-    reaper.ShowConsoleMsg(",\"nbSends\": \""..nbSends.."\",\n")
-    reaper.ShowConsoleMsg("\"nbReceives\": \""..nbReceives.."\",\n")
+    nbHardwareSends = reaper.GetTrackNumSends(track, 1)
+    reaper.ShowConsoleMsg(",\"nbSends\": "..nbSends..",\n")
+    reaper.ShowConsoleMsg("\"nbReceives\": "..nbReceives..",\n")
+    reaper.ShowConsoleMsg("\"nbHardSends\": "..nbHardwareSends..",\n")
 
     reaper.ShowConsoleMsg("\"sends\": [\n")
     local i = 0
@@ -38,19 +57,22 @@ function printSendsList(track)
     reaper.ShowConsoleMsg("]")
 end
 
+
+
+function printTrackBlock(track)
+    reaper.ShowConsoleMsg("{")
+    printTrackBasicInfo(track)
+    printSendsList(track)
+    printTrackFxNames(track)
+    reaper.ShowConsoleMsg("},")
+end
+
+-- Main script
 local i = 0
 reaper.ShowConsoleMsg("[")
 while reaper.GetSelectedTrack(0, i) do
-    reaper.ShowConsoleMsg("{")
     track = reaper.GetSelectedTrack(0, i)
-    
-    printTrackName(track)
-    -- printTrackVolume(track)
-    -- printTrackPan(track)
-    printSendsList(track)
-    reaper.ShowConsoleMsg(", \"fx\": [")
-    printTrackFxNames(track)
-    reaper.ShowConsoleMsg("]},")
+    printTrackBlock(track)
     i = i + 1
 end
 reaper.ShowConsoleMsg("]")
